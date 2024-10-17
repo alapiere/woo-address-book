@@ -1,0 +1,16 @@
+{
+    "name": "crosspeaksoftware/woo-address-book",
+    "description": "WooCommerce Address Book Plugin",
+    "type": "wordpress-plugin",
+    "require": {
+        "php": ">=7.0"
+    },
+    "repositories": [
+        {
+            "type": "git",
+            "url": "git@github.com:alapiere/woo-address-book.git"
+        }
+    ],
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
