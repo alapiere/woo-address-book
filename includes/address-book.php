@@ -195,38 +195,6 @@ function get_woo_address( \WC_Customer $customer, string $key, string $type ) {
 }
 
 /**
- * Handles deprecated addresses from prior to 3.0 when formatting for legacy templates.
- *
- * @param array  $fields Address fields.
- * @param int    $customer_id Customer ID.
- * @param string $address_name Address name.
- * @return array
- */
-function legacy_address_formatting( array $fields, $customer_id, $address_name ) {
-	if ( empty( array_filter( $fields ) ) ) {
-		if ( str_starts_with( $address_name, 'shipping' ) ) {
-			$type = 'shipping';
-		} elseif ( str_starts_with( $address_name, 'billing' ) ) {
-			$type = 'billing';
-		} else {
-			$type = null;
-		}
-		if ( $type ) {
-			$address_book = get_address_book( new \WC_Customer( $customer_id ), $type );
-			$fields       = $address_book->address( $address_name );
-		}
-	}
-	// Check if any fields are arrays that can't be displayed and removed those.
-	foreach ( $fields as $key => $value ) {
-		if ( is_array( $value ) ) {
-			unset( $fields[ $key ] );
-		}
-	}
-	return $fields;
-}
-add_filter( 'woocommerce_my_account_my_address_formatted_address', __NAMESPACE__ . '\legacy_address_formatting', 10, 3 );
-
-/**
  * Adds the address book select to the checkout page.
  *
  * @since 1.0.0
@@ -234,71 +202,67 @@ add_filter( 'woocommerce_my_account_my_address_formatted_address', __NAMESPACE__
  * @param array $fields An array of WooCommerce Address fields.
  * @return array
  */
-function checkout_address_select_field( array $fields ) {
-	if ( is_user_logged_in() ) {
-		$customer = get_current_customer( 'checkout_address_select_field' );
-		if ( empty( $customer ) ) {
-			return $fields;
-		}
-		foreach ( $fields as $type => $address_fields ) {
-			if ( ( 'billing' === $type && setting( 'billing_enable' ) === true ) || ( 'shipping' === $type && setting( 'shipping_enable' ) === true ) ) {
-				$address_book = get_address_book( $customer, $type );
-				$under_limit  = limit_saved_addresses( $type );
+function add_address_book_to_checkout_fields($fields, $type) {
+    if (is_user_logged_in()) {
+        $customer = get_current_customer('checkout_address_select_field');
+        if (empty($customer)) {
+            return $fields;
+        }
 
-				$select_type = 'select';
-				if ( setting( 'use_radio_input', 'no' ) === true ) {
-					$select_type = 'radio';
-				}
+        $address_book = get_address_book($customer, $type);
+        $under_limit = limit_saved_addresses($type);
 
-				$address_selector                            = array();
-				$address_selector[ $type . '_address_book' ] = array(
-					'type'     => $select_type,
-					'class'    => array( 'form-row-wide', 'address_book' ),
-					'label'    => __( 'Address Book', 'woo-address-book' ),
-					'order'    => -1,
-					'priority' => -1,
-				);
+        $select_type = 'select';
+        if (setting('use_radio_input', 'no') === true) {
+            $select_type = 'radio';
+        }
 
-				if ( $address_book->count() > 0 ) {
-					$is_subscription_renewal = is_subscription_renewal();
+        $address_selector = array(
+            'type' => $select_type,
+            'class' => array('form-row-wide', 'address_book'),
+            'label' => __('Address Book', 'woo-address-book'),
+            'options' => array(),
+        );
 
-					if ( $is_subscription_renewal ) {
-						$default_to_new_address = false;
-					} else {
-						$default_to_new_address = setting( $type . '_default_to_new_address', 'no' );
-					}
+        if ($address_book->count() > 0) {
+            $is_subscription_renewal = is_subscription_renewal();
 
-					foreach ( $address_book->addresses() as $name => $address ) {
-						$label = address_select_label( $address );
-						if ( ! empty( $label ) ) {
-							$address_selector[ $type . '_address_book' ]['options'][ $name ] = $label;
-						}
-					}
+            // Determine default address logic
+            $default_to_new_address = $is_subscription_renewal ? false : setting($type . '_default_to_new_address', 'no');
 
-					if ( $is_subscription_renewal ) {
-						$address_selector[ $type . '_address_book' ]['class'][] = 'wc-address-book-subscription-renewal';
-					}
+            foreach ($address_book->addresses() as $name => $address) {
+                $label = address_select_label($address);
+                if (!empty($label)) {
+                    $address_selector['options'][$name] = $label;
+                }
+            }
 
-					if ( $under_limit ) {
-						$address_selector[ $type . '_address_book' ]['options']['add_new'] = __( 'Add New Address', 'woo-address-book' );
-					}
+            if ($is_subscription_renewal) {
+                $address_selector['class'][] = 'wc-address-book-subscription-renewal';
+            }
 
-					if ( $default_to_new_address ) {
-						$address_selector[ $type . '_address_book' ]['default'] = 'add_new';
-					} else {
-						$address_selector[ $type . '_address_book' ]['default'] = $type;
-					}
+            if ($under_limit) {
+                $address_selector['options']['add_new'] = __('Add New Address', 'woo-address-book');
+            }
 
-					$fields[ $type ] = $address_selector + $fields[ $type ];
-				}
-			}
-		}
-	}
+            // Set default selection based on settings
+            $address_selector['default'] = $default_to_new_address ? 'add_new' : key($address_selector['options']);
 
-	return $fields;
+            $fields[$type . '_address_book'] = $address_selector;
+        }
+    }
+
+    return $fields;
 }
-add_filter( 'woocommerce_checkout_fields', __NAMESPACE__ . '\checkout_address_select_field', 10000, 1 );
 
+// Hook into the WooCommerce checkout fields for both billing and shipping
+add_filter('woocommerce_billing_fields', function($fields) {
+    return add_address_book_to_checkout_fields($fields, 'billing');
+}, 10000, 1);
+
+add_filter('woocommerce_shipping_fields', function($fields) {
+    return add_address_book_to_checkout_fields($fields, 'shipping');
+}, 10000, 1);
 /**
  * Adds the address book select to the checkout page.
  *
