@@ -1,5 +1,5 @@
 {
-    "name": "crosspeaksoftware/woo-address-book",
+    "name": "alapiere/woo-address-book",
     "description": "WooCommerce Address Book Plugin",
     "type": "wordpress-plugin",
     "require": {
