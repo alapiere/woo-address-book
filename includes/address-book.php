@@ -257,12 +257,12 @@ function add_address_book_to_checkout_fields($fields, $type) {
 }
 
 // Hook into the WooCommerce checkout fields for both billing and shipping
-if(setting( 'billing_enable' )) add_filter('woocommerce_billing_fields', function($fields) {
-    return add_address_book_to_checkout_fields($fields, 'billing');
+ add_filter('woocommerce_billing_fields', function($fields) {
+    if(setting( 'billing_enable' )) return add_address_book_to_checkout_fields($fields, 'billing');
 }, 10000, 1);
 
-if(setting( 'shipping_enable' )) add_filter('woocommerce_shipping_fields', function($fields) {
-    return add_address_book_to_checkout_fields($fields, 'shipping');
+add_filter('woocommerce_shipping_fields', function($fields) {
+    if(setting( 'shipping_enable' )) return add_address_book_to_checkout_fields($fields, 'shipping');
 }, 10000, 1);
 /**
  * Adds the address book select to the checkout page.

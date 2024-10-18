@@ -76,5 +76,4 @@ if ( ! function_exists( '\CrossPeakSoftware\WooCommerce\AddressBook\get_address_
 	require __DIR__ . '/includes/subscriptions.php';
 	require __DIR__ . '/includes/api.php';
 	require __DIR__ . '/includes/settings.php';
-	require __DIR__ . '/deprecations/class-wc-address-book.php';
 }
